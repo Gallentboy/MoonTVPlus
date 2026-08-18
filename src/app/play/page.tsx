@@ -7967,42 +7967,15 @@ function PlayPageClient() {
                   return;
                 }
 
-                // 如果在 PWA 模式下，使用视频元素的原生全屏（可以隐藏状态栏）
+                // 如果在 PWA 模式下，直接使用容器全屏（可以隐藏状态栏）
                 if (isPWA) {
-                  const videoElement = artPlayerRef.current.template.$video;
-                  if (videoElement && videoElement.requestFullscreen) {
-                    // iPad 等 supportsFullscreen API 的环境：对 video 全屏，保留播放器 UI
-                    try {
-                      const result = videoElement.requestFullscreen();
-                      if (result && typeof result.catch === 'function') {
-                        result.catch((err: Error) => {
-                          console.error('PWA 全屏失败:', err);
-                          if (artPlayerRef.current) {
-                            artPlayerRef.current.fullscreenWeb = true;
-                          }
-                        });
-                      }
-                    } catch (err) {
+                  const container = artPlayerRef.current.template.$container;
+                  if (container && container.webkitEnterFullscreen) {
+                    container.webkitEnterFullscreen().catch((err: Error) => {
                       console.error('PWA 全屏失败:', err);
+                      // 如果失败，降级使用网页全屏
                       artPlayerRef.current.fullscreenWeb = true;
-                    }
-                  } else if (videoElement && (videoElement as any).webkitEnterFullscreen) {
-                    // iPhone：webkitEnterFullscreen 只存在于 video 元素上（div 上没有），
-                    // 且 iOS Safari 中该方法不返回 Promise，不能直接 .catch()
-                    try {
-                      const result = (videoElement as any).webkitEnterFullscreen();
-                      if (result && typeof result.catch === 'function') {
-                        result.catch((err: Error) => {
-                          console.error('PWA 全屏失败:', err);
-                          if (artPlayerRef.current) {
-                            artPlayerRef.current.fullscreenWeb = true;
-                          }
-                        });
-                      }
-                    } catch (err) {
-                      console.error('PWA 全屏失败:', err);
-                      artPlayerRef.current.fullscreenWeb = true;
-                    }
+                    });
                   } else {
                     // 不支持原生全屏，使用网页全屏
                     artPlayerRef.current.fullscreenWeb = true;
@@ -8079,7 +8052,7 @@ function PlayPageClient() {
                       <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2"/>
                       <path d="M12 16v-4m0-4h.01" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
                     </svg>
-                    <span>网页全屏不会隐藏系统状态栏；添加到主屏幕（PWA）后点击全屏将直接进入原生全屏</span>
+                    <span>将网站添加到主屏幕（PWA）后，网页全屏可以完全全屏</span>
                   </div>
                 </div>
               `;
