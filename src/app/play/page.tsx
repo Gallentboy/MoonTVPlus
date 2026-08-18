@@ -8326,53 +8326,31 @@ function PlayPageClient() {
 
           // iOS 设备：监听屏幕方向变化，自动调整全屏状态
           if (isIOS && artPlayerRef.current) {
-            // 标记是否因旋转自动进入的网页全屏（区别于手动点击进入，转回竖屏时只退出自动进入的）
-            let autoEnteredByRotation = false;
-            let orientationTimer: ReturnType<typeof setTimeout> | null = null;
-
-            const applyOrientation = () => {
+            const handleOrientationChange = () => {
               if (!artPlayerRef.current) return;
 
               // 获取当前屏幕方向
               const isLandscape = window.matchMedia('(orientation: landscape)').matches;
               const isPortrait = window.matchMedia('(orientation: portrait)').matches;
 
-              // 已在原生全屏（系统播放器）时由系统自行处理旋转，不干预
-              const videoElement = artPlayerRef.current.template.$video as HTMLVideoElement;
-              const isInNativeFullscreen = !!(
-                document.fullscreenElement ||
-                (document as any).webkitFullscreenElement ||
-                (videoElement && (videoElement as any).webkitDisplayingFullscreen)
-              );
-              if (isInNativeFullscreen) return;
+              console.log('[iOS] 屏幕方向变化:', {
+                isLandscape,
+                isPortrait,
+                fullscreenWeb: artPlayerRef.current.fullscreenWeb
+              });
 
-              // 视频已开始播放（播放中/暂停）才响应旋转，未播放时不打扰
-              const hasStarted = ['playing', 'paused'].includes(artPlayerRef.current.state);
-
-              if (isLandscape && !artPlayerRef.current.fullscreenWeb && hasStarted) {
-                // 横屏：自动进入网页全屏。iPhone 上原生全屏需要用户手势、旋转事件无法触发，
-                // 但横屏下 iOS 本身不显示状态栏，网页全屏即可完全铺满屏幕
-                autoEnteredByRotation = true;
-                artPlayerRef.current.fullscreenWeb = true;
-              } else if (isLandscape && artPlayerRef.current.fullscreenWeb) {
-                // 横屏前已在网页全屏：退出再进入以强制重排版，确保布局更新
+              // 如果在网页全屏状态下旋转到横屏，切换到正常全屏
+              if (artPlayerRef.current.fullscreenWeb && isLandscape) {
+                console.log('[iOS] 横屏模式：从网页全屏切换到正常全屏');
+                // 先退出网页全屏
                 artPlayerRef.current.fullscreenWeb = false;
+                // 延迟一下再进入正常全屏，确保布局已更新
                 setTimeout(() => {
                   if (artPlayerRef.current) {
                     artPlayerRef.current.fullscreenWeb = true;
                   }
                 }, 100);
-              } else if (isPortrait && artPlayerRef.current.fullscreenWeb && autoEnteredByRotation) {
-                // 转回竖屏：退出因旋转自动进入的网页全屏（手动进入的保持不动）
-                autoEnteredByRotation = false;
-                artPlayerRef.current.fullscreenWeb = false;
               }
-            };
-
-            const handleOrientationChange = () => {
-              // iOS 上 orientationchange 触发时视口尺寸可能尚未更新，延迟后再读取方向
-              if (orientationTimer) clearTimeout(orientationTimer);
-              orientationTimer = setTimeout(applyOrientation, 150);
             };
 
             // 监听屏幕方向变化
@@ -8382,7 +8360,6 @@ function PlayPageClient() {
 
             // 清理函数
             artPlayerRef.current.on('destroy', () => {
-              if (orientationTimer) clearTimeout(orientationTimer);
               window.removeEventListener('orientationchange', handleOrientationChange);
               window.removeEventListener('resize', handleOrientationChange);
             });
